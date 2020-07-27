@@ -13,29 +13,29 @@ print = misc.logger.info
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='0', type=str)
 parser.add_argument('--dataset', default='cifar10', type=str)
-parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
-parser.add_argument('--lr', default=0.1, type=float)
-parser.add_argument('--mm', default=0.9, type=float)
+parser.add_argument('--arch', '-a', default='resnet56', type=str)
+parser.add_argument('--lr', default=0.15, type=float)
+parser.add_argument('--mm', default=0.85, type=float)
 parser.add_argument('--wd', default=1e-4, type=float)
 parser.add_argument('--epochs', default=160, type=int)
 parser.add_argument('--log_interval', default=100, type=int)
 parser.add_argument('--train_batch_size', default=128, type=int)
-parser.add_argument('--sparsity_level', '-s', default=0.2, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.7, type=float)
-parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
-parser.add_argument('--seed', default=None, type=int)
+parser.add_argument('--sparsity_level', '-s', default=0.15, type=float)
+parser.add_argument('--pruned_ratio', '-p', default=0.85, type=float)
+parser.add_argument('--expanded_inchannel', '-e', default=20, type=int)
+parser.add_argument('--seed', default=4625, type=int)
 parser.add_argument('--budget_train', action='store_true')
 
 args = parser.parse_args()
 args.seed = misc.set_seed(args.seed)
 
-if args.budget_train:
-    args.epochs = int(1 / (1 - args.pruned_ratio) * args.epochs)
-
+# if args.budget_train:
+#     args.epochs = int(1 / (1 - args.pruned_ratio) * args.epochs)
+args.epochs=2*args.epochs
 args.num_classes = 10
 
 args.device = 'cuda'
-os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 args.logdir = 'seed-%d/%s-%s/channel-%d-pruned-%.2f' % (
     args.seed, args.dataset, args.arch, args.expanded_inchannel, args.pruned_ratio
@@ -60,10 +60,10 @@ transform_val = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = datasets.CIFAR10(root='./data/cifar10', type='train+val', transform=transform_train)
+trainset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='train+val', transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.train_batch_size, shuffle=True, num_workers=2)
 
-testset = datasets.CIFAR10(root='./data/cifar10', type='test', transform=transform_val)
+testset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='test', transform=transform_val)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 print('==> Initializing model...')

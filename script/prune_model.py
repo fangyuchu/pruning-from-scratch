@@ -8,12 +8,12 @@ import models
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='0', type=str)
 parser.add_argument('--dataset', default='cifar10', type=str)
-parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
-parser.add_argument('--sparsity_level', '-s', default=0.2, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.5, type=float)
+parser.add_argument('--arch', '-a', default='resnet56', type=str)
+parser.add_argument('--sparsity_level', '-s', default=0.15, type=float)
+parser.add_argument('--pruned_ratio', '-p', default=0.85, type=float)
 parser.add_argument('--max_iter', default=10, type=int)
-parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
-parser.add_argument('--seed', default=None, type=int)
+parser.add_argument('--expanded_inchannel', '-e', default=20, type=int)
+parser.add_argument('--seed', default=4625, type=int)
 
 args = parser.parse_args()
 args.seed = misc.set_seed(args.seed)
@@ -52,7 +52,7 @@ end_pruned_ratio = 1
 
 pruned_cfg = models.expanded_cfg(args.expanded_inchannel)[args.arch]
 
-for j in range(args.max_iter):
+for j in range(20):#args.max_iter):
     cur_pruned_ratio = (start_pruned_ratio + end_pruned_ratio) / 2
     reserved_channel_num = round(len(all_gates) * (1 - cur_pruned_ratio))
     reserved_index = all_gates.topk(reserved_channel_num)[1]
@@ -68,10 +68,13 @@ for j in range(args.max_iter):
             pruned_cfg[i] = masks[counter].sum().long().item()
             counter += 1
 
-    model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
+    try:
+        model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
+    except:
+        print()
 
     pruned_flops = calculate_flops(model)
-    actual_pruned_ratio = 1 - pruned_flops / full_flops
+    actual_pruned_ratio = 1 - pruned_flops / full_flops # ratio of flops pruned
     print('Iter %d, start %.2f, end %.2f, pruned ratio = %.4f' % (
         j, start_pruned_ratio, end_pruned_ratio, actual_pruned_ratio
     ))

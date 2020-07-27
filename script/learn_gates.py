@@ -15,14 +15,14 @@ print = misc.logger.info
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='0', type=str)
 parser.add_argument('--dataset', default='cifar10', type=str)
-parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
-parser.add_argument('--sparsity_level', '-s', default=0.2, type=float)
+parser.add_argument('--arch', '-a', default='resnet56', type=str)
+parser.add_argument('--sparsity_level', '-s', default=0.15, type=float)
 parser.add_argument('--lr', default=0.01, type=float)
 parser.add_argument('--lambd', default=0.5, type=float)
 parser.add_argument('--epochs', default=10, type=int)
 parser.add_argument('--log_interval', default=100, type=int)
 parser.add_argument('--train_batch_size', default=128, type=int)
-parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
+parser.add_argument('--expanded_inchannel', '-e', default=20, type=int)
 parser.add_argument('--seed', default=None, type=int)
 
 args = parser.parse_args()
@@ -52,10 +52,10 @@ transform_val = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = datasets.CIFAR10(root='./data/cifar10', type='train', transform=transform_train)
+trainset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='train', transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.train_batch_size, shuffle=True, num_workers=2)
 
-valset = datasets.CIFAR10(root='./data/cifar10', type='val', transform=transform_val)
+valset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='val', transform=transform_val)
 valloader = torch.utils.data.DataLoader(valset, batch_size=100, shuffle=False, num_workers=2)
 
 print('==> Initializing model...')
