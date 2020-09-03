@@ -7,13 +7,13 @@ import models
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='0', type=str)
-parser.add_argument('--dataset', default='cifar10', type=str)
-parser.add_argument('--arch', '-a', default='resnet56', type=str)
-parser.add_argument('--sparsity_level', '-s', default=0.15, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.85, type=float)
+parser.add_argument('--dataset', default='cifar100', type=str)
+parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
+parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
+parser.add_argument('--pruned_ratio', '-p', default=0.75, type=float)
 parser.add_argument('--max_iter', default=10, type=int)
-parser.add_argument('--expanded_inchannel', '-e', default=20, type=int)
-parser.add_argument('--seed', default=4625, type=int)
+parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
+parser.add_argument('--seed', default=4699, type=int)
 
 args = parser.parse_args()
 args.seed = misc.set_seed(args.seed)
@@ -22,7 +22,7 @@ args.device = 'cuda'
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 args.eps = 0.001
-args.num_classes = 10
+args.num_classes = 100
 
 args.logdir = 'logs/seed-%d/%s-%s/channel-%d-sparsity-%.2f' % (
     args.seed, args.dataset, args.arch, args.expanded_inchannel, args.sparsity_level
@@ -68,10 +68,8 @@ for j in range(20):#args.max_iter):
             pruned_cfg[i] = masks[counter].sum().long().item()
             counter += 1
 
-    try:
-        model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
-    except:
-        print()
+    model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
+
 
     pruned_flops = calculate_flops(model)
     actual_pruned_ratio = 1 - pruned_flops / full_flops # ratio of flops pruned

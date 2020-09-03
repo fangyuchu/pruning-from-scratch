@@ -19,21 +19,21 @@ def print(msg):
         misc.logger.info(msg)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data', default='data/imagenet', type=str)
-parser.add_argument('--arch', '-a', default='mobilenet_v1', type=str)
+parser.add_argument('--data', default='/home/victorfang/dataset/imagenet', type=str)
+parser.add_argument('--arch', '-a', default='resnet50', type=str)
 parser.add_argument('--lr_gamma', default=0.975, type=float)
-parser.add_argument('--lr_scheduler', default='cos', type=str)
-parser.add_argument('--lr', default=0.05, type=float)
+parser.add_argument('--lr_scheduler', default='multistep', type=str)
+parser.add_argument('--lr', default=0.1, type=float)
 parser.add_argument('--mm', default=0.9, type=float)
-parser.add_argument('--wd', default=4e-5, type=float)
-parser.add_argument('--epochs', default=150, type=int)
+parser.add_argument('--wd', default=1e-4, type=float)
+parser.add_argument('--epochs', default=90, type=int)
 parser.add_argument('--log_interval', default=50, type=int)
 parser.add_argument('-b', '--batch_size', default=256, type=int,
                     metavar='N', help='mini-batch size per process (default: 256)')
 parser.add_argument("--local_rank", default=0, type=int)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.5, type=float)
-parser.add_argument('--expanded_inchannel', '-e', default=40, type=int)
+parser.add_argument('--pruned_ratio', '-p', default=0.8, type=float)
+parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
 parser.add_argument('--multiplier', '-m', default=1.0, type=float)
 parser.add_argument('--budget_train', action='store_true')
 parser.add_argument('--label_smooth', action='store_true')
@@ -41,6 +41,9 @@ parser.add_argument('--label_smooth', action='store_true')
 args = parser.parse_args()
 if args.budget_train:
     args.epochs = 200 if args.arch == 'resnet50' else 300
+
+args.epochs = 90 #todo: here
+
 
 args.logdir = 'imagenet-%s/channel-%d-pruned-%.2f' % (
     args.arch, args.expanded_inchannel, args.pruned_ratio
@@ -75,6 +78,7 @@ pruned_cfg = misc.load_pickle('logs/imagenet-%s/channel-%d-sparsity-%.2f/pruned_
 ))
 
 model = models.__dict__[args.arch](1000, args.expanded_inchannel, args.multiplier, pruned_cfg)
+torch.save({'net':model,'state_dict':model.state_dict()},'/home/victorfang/pfs_resnet50_80.tar')
 model = model.cuda()
 model = DDP(model, delay_allreduce=True)
 # define loss function (criterion) and optimizer
@@ -108,7 +112,8 @@ def get_lr_scheduler(optimizer):
 
     if args.lr_scheduler == 'multistep':
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[int(0.3*args.epochs), int(0.6*args.epochs), int(0.9*args.epochs)],
+            # optimizer, milestones=[int(0.3*args.epochs), int(0.6*args.epochs), int(0.9*args.epochs)],
+            optimizer, milestones=[30,60],#todo:here
             gamma=0.1)
 
     elif args.lr_scheduler == 'cos':

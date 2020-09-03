@@ -3,7 +3,7 @@ import datasets
 import torch
 import argparse
 import os
-
+import torchvision
 from gate import default_graph, apply_func, replace_func
 from gate import init_convbn_gates, collect_convbn_gates, new_convbn_forward
 import models
@@ -12,16 +12,16 @@ import misc
 print = misc.logger.info
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', default='0', type=str)
-parser.add_argument('--data', default='data/imagenet', type=str)
-parser.add_argument('--arch', '-a', default='mobilenet_v1', type=str)
+parser.add_argument('--gpu', default='3', type=str)
+parser.add_argument('--data', default='/home/victorfang/dataset/imagenet', type=str)
+parser.add_argument('--arch', '-a', default='resnet50', type=str)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
 parser.add_argument('--lr', default=0.01, type=float)
 parser.add_argument('--lambd', default=0.05, type=float)
 parser.add_argument('--log_interval', default=100, type=int)
 parser.add_argument('--eval_interval', default=500, type=int)
 parser.add_argument('--train_batch_size', default=100, type=int)
-parser.add_argument('--expanded_inchannel', '-e', default=40, type=int)
+parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
 parser.add_argument('--multiplier', '-m', default=1.0, type=float)
 parser.add_argument('--seed', default=None, type=int)
 
@@ -51,12 +51,12 @@ transform_test = transforms.Compose([
 ])
 
 train_loader = torch.utils.data.DataLoader(
-    datasets.ImageNet(args.data, 'train', transform_train),
+    torchvision.datasets.ImageFolder(args.data+ '/train', transform_train),
     batch_size=args.train_batch_size, shuffle=True, num_workers=32,
     pin_memory=True, collate_fn=datasets.fast_collate
 )
 test_loader = torch.utils.data.DataLoader(
-    datasets.ImageNet(args.data, 'val', transform_test),
+    torchvision.datasets.ImageFolder(args.data+'/validation', transform_test),
     batch_size=50, shuffle=False, num_workers=32,
     pin_memory=True, collate_fn=datasets.fast_collate
 )

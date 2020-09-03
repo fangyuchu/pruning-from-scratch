@@ -7,11 +7,11 @@ import models
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', default='0', type=str)
-parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
+parser.add_argument('--arch', '-a', default='resnet50', type=str)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.5, type=float)
-parser.add_argument('--max_iter', default=10, type=int)
-parser.add_argument('--expanded_inchannel', '-e', default=40, type=int)
+parser.add_argument('--pruned_ratio', '-p', default=0.75, type=float)
+parser.add_argument('--max_iter', default=20, type=int)
+parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
 parser.add_argument('--multiplier', '-m', default=1.0, type=float)
 
 args = parser.parse_args()
