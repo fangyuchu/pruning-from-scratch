@@ -1,8 +1,10 @@
+import os,sys
+sys.path.append('../')
+sys.path.append('../../')
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-import os
 from datetime import datetime
 import math
 import matplotlib.pyplot as plt
