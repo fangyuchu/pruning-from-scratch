@@ -12,7 +12,7 @@ from script.my_train import data_loader, measure_flops, evaluate, config as conf
 from math import ceil
 from script.my_train import storage
 from torch.utils.tensorboard import SummaryWriter
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 def exponential_decay_learning_rate(optimizer, sample_num, num_train,learning_rate_decay_epoch,learning_rate_decay_factor,batch_size):
@@ -408,7 +408,7 @@ def train(
 
 if __name__ == "__main__":
     expanded_inchannel=80
-    pruned_ratio=0.75
+    pruned_ratio=0.7
     sparsity_level=0.5
     arch='resnet50'
     multiplier=1.0

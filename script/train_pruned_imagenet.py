@@ -28,11 +28,11 @@ parser.add_argument('--mm', default=0.9, type=float)
 parser.add_argument('--wd', default=1e-4, type=float)
 parser.add_argument('--epochs', default=90, type=int)
 parser.add_argument('--log_interval', default=50, type=int)
-parser.add_argument('-b', '--batch_size', default=256, type=int,
+parser.add_argument('-b', '--batch_size', default=512, type=int,
                     metavar='N', help='mini-batch size per process (default: 256)')
 parser.add_argument("--local_rank", default=0, type=int)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.8, type=float)
+parser.add_argument('--pruned_ratio', '-p', default=0.7, type=float)
 parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
 parser.add_argument('--multiplier', '-m', default=1.0, type=float)
 parser.add_argument('--budget_train', action='store_true')
