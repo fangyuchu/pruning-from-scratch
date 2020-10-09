@@ -92,6 +92,7 @@ def evaluate_net(  net,
                    max_data_to_test=99999999,
                    top_acc=1,
                    device=None,
+                   optimizer=None,
                    ):
     '''
     :param net: net of NN
@@ -106,8 +107,6 @@ def evaluate_net(  net,
     :param max_data_to_test: use at most max_data_to_test images to evaluate the net
     :param top_acc: top 1 or top 5 accuracy
     '''
-    if isinstance(net,nn.DataParallel):
-        net=deepcopy(net.module)
     net.eval()
     if save_net:
         flop_num = measure_flops.measure_model(net=net, dataset_name=dataset_name, print_flop=False)
@@ -132,7 +131,7 @@ def evaluate_net(  net,
     print("{} Start Evaluation".format(datetime.now()))
     print("{} sample num = {}".format(datetime.now(), sample_num))
 
-    top1_accuracy,top5_accuracy=validate(data_loader,net,max_data_to_test,device)
+    top1_accuracy, top5_accuracy = validate(data_loader, net, max_data_to_test, device)
     if top_acc==1:
         accuracy=top1_accuracy
     elif top_acc==5:
@@ -145,6 +144,11 @@ def evaluate_net(  net,
                     'sample_num':sample_num,
                     'flop_num':flop_num,
                     'exp_name':exp_name}
+
+        if optimizer is not None:
+            checkpoint['optimizer']=optimizer
+            checkpoint['optimizer_state_dict']=optimizer.state_dict()
+
         checkpoint.update(storage.get_net_information(net,dataset_name,net_name))
         torch.save(checkpoint,'%s/flop=%d,accuracy=%.5f.tar' % (checkpoint_path, flop_num,accuracy))
         print("{} net saved at sample num = {}".format(datetime.now(), sample_num))

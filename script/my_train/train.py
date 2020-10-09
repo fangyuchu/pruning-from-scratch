@@ -12,7 +12,7 @@ from script.my_train import data_loader, measure_flops, evaluate, config as conf
 from math import ceil
 from script.my_train import storage
 from torch.utils.tensorboard import SummaryWriter
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def exponential_decay_learning_rate(optimizer, sample_num, num_train,learning_rate_decay_epoch,learning_rate_decay_factor,batch_size):
@@ -120,7 +120,7 @@ def train(
         num_epochs=conf.num_epochs,
         batch_size=conf.batch_size,
         evaluate_step=conf.evaluate_step,
-        load_net=True,
+        resume=True,
         test_net=False,
         root_path=conf.root_path,
         momentum=conf.momentum,
@@ -141,7 +141,6 @@ def train(
         data_parallel=False,
         save_at_each_step=False,
         gradient_clip_value=None,
-
 ):
     '''
 
@@ -159,7 +158,7 @@ def train(
     :param num_epochs: max number of epochs for training
     :param batch_size:
     :param evaluate_step: how often will the net be tested on test set. At least one test every epoch is guaranteed
-    :param load_net: boolean, whether loading net from previous checkpoint. The newest checkpoint will be selected.
+    :param resume: boolean, whether loading net from previous checkpoint. The newest checkpoint will be selected.
     :param test_net:boolean, if true, the net will be tested before training.
     :param root_path:
     :param checkpoint_path:
@@ -213,6 +212,8 @@ def train(
     if not os.path.exists(crash_path):
         os.makedirs(crash_path, exist_ok=True)
 
+    optimizer=prepare_optimizer(net, optimizer, momentum, learning_rate, weight_decay ,requires_grad)
+
     #get the latest checkpoint
     lists = os.listdir(checkpoint_path)
     file_new=checkpoint_path
@@ -222,11 +223,21 @@ def train(
 
     sample_num=0
     if os.path.isfile(file_new):
-        if load_net:
-            checkpoint = torch.load(file_new)
+        if resume:
+            checkpoint = torch.load(file_new,map_location='cpu')
             print('{} load net from previous checkpoint:{}'.format(datetime.now(),file_new))
-            net=storage.restore_net(checkpoint,pretrained=True,data_parallel=data_parallel)
+            # net=storage.restore_net(checkpoint,pretrained=True,data_parallel=data_parallel)
+            if isinstance(net,nn.DataParallel) and 'module.' not in list(checkpoint['state_dict'])[0]:
+                net.module.load_state_dict(checkpoint['state_dict'])
+            elif not isinstance(net,nn.DataParallel) and 'module.' in list(checkpoint['state_dict'])[0]:
+                net=nn.DataParallel(net)
+                net.load_state_dict(checkpoint['state_dict'])
+                net=net.module
+            else:
+                net.load_state_dict(checkpoint['state_dict'])
+            net.cuda()
             sample_num = checkpoint['sample_num']
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     #set up summary writer for tensorboard
     writer=SummaryWriter(log_dir=tensorboard_path,
@@ -250,7 +261,8 @@ def train(
                                         dataset_name=dataset_name,
                                         top_acc=top_acc,
                                         net_name=net_name,
-                                        exp_name=exp_name
+                                        exp_name=exp_name,
+                                        optimizer=optimizer
                                         )
 
         if accuracy >= target_accuracy:
@@ -262,7 +274,6 @@ def train(
         evaluate_step= math.ceil(num_train / batch_size) - 1
 
 
-    optimizer=prepare_optimizer(net, optimizer, momentum, learning_rate, weight_decay ,requires_grad)
     if learning_rate_decay:
         if scheduler_name =='MultiStepLR':
             scheduler = lr_scheduler.MultiStepLR(optimizer,
@@ -280,13 +291,14 @@ def train(
     xaxis_acc=[]
     xaxis=0
     print("{} Start training ".format(datetime.now())+net_name+"...")
-
     for epoch in range(math.floor(sample_num/num_train),num_epochs):
         print("{} Epoch number: {}".format(datetime.now(), epoch + 1))
         net.train()
         # one epoch for one loop
         for step, data in enumerate(train_loader, 0):
-
+            # if step==0 and epoch==0:      # debug code
+            #     old_data=data             #use the same batch of data over and over again
+            # data=old_data                 #the loss should decrease if the net is defined properly
 
             xaxis+=1
             if sample_num / num_train==epoch+1:               #one epoch of training finished
@@ -298,7 +310,8 @@ def train(
                                                 dataset_name=dataset_name,
                                                 top_acc=top_acc,
                                                 net_name=net_name,
-                                                exp_name=exp_name)
+                                                exp_name=exp_name,
+                                                optimizer=optimizer)
                 if accuracy>=target_accuracy:
                     print('{} net reached target accuracy.'.format(datetime.now()))
                     return success
@@ -306,7 +319,7 @@ def train(
 
             # 准备数据
             images, labels = data
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.cuda(), labels.cuda()
             sample_num += int(images.shape[0])
 
             optimizer.zero_grad()
@@ -330,8 +343,9 @@ def train(
                 torch.nn.utils.clip_grad_value_(net.parameters(), gradient_clip_value)
 
             optimizer.step()
-            loss_list += [float(loss.detach())]
-            xaxis_loss += [xaxis]
+            if paint_loss:
+                loss_list += [float(loss.detach())]
+                xaxis_loss += [xaxis]
             writer.add_scalar(tag='status/loss',
                               scalar_value=float(loss.detach()),
                               global_step=int(sample_num / batch_size))
@@ -348,15 +362,18 @@ def train(
                                                  dataset_name=dataset_name,
                                                  top_acc=top_acc,
                                                  net_name=net_name,
-                                                 exp_name=exp_name)
+                                                 exp_name=exp_name,
+                                                optimizer=optimizer)
 
                 if accuracy >= target_accuracy:
                     print('{} net reached target accuracy.'.format(datetime.now()))
                     return success
                 accuracy = float(accuracy)
 
-                acc_list += [accuracy]
-                xaxis_acc += [xaxis]
+                if paint_loss:
+                    acc_list += [accuracy]
+                    xaxis_acc += [xaxis]
+
                 writer.add_scalar(tag='status/val_acc',
                                   scalar_value=accuracy,
                                   global_step=epoch)
@@ -374,8 +391,8 @@ def train(
                     plt.close()
 
                 print('{} continue training'.format(datetime.now()))
+        scheduler.step()
         if learning_rate_decay:
-            scheduler.step()
             print(optimizer.state_dict()['param_groups'][0]['lr'],
                   optimizer.state_dict()['param_groups'][-1]['lr'])
 
@@ -389,7 +406,8 @@ def train(
                                      dataset_name=dataset_name,
                                      top_acc=top_acc,
                                      net_name=net_name,
-                                     exp_name=exp_name)
+                                     exp_name=exp_name,
+                                     optimizer=optimizer)
     accuracy = float(accuracy)
     checkpoint = {
         'highest_accuracy': accuracy,
@@ -427,18 +445,23 @@ if __name__ == "__main__":
     model.cuda()
     train(net=model,
           net_name=arch,
-          exp_name='imagenet-%s-sparsity-%.2f/channel-%d-pruned-%.2f' % (arch, sparsity_level,expanded_inchannel, pruned_ratio),
-          learning_rate=0.1,
-          num_epochs=90,
+          exp_name='imagenet-%s-sparsity-%.2f/channel-%d-pruned-%.2f_train' % (arch, sparsity_level,expanded_inchannel, pruned_ratio),
+          # learning_rate=0.1,
+          # learning_rate_decay_epoch=[30, 60],
+          # num_epochs=90,
+
+          learning_rate=0.001,
+          learning_rate_decay_epoch=[70],
+          num_epochs=30,
+
           batch_size=256,
           evaluate_step=6000,
-          load_net=True,
+          resume=True,
           test_net=True,
           momentum=0.9,
           num_workers=8,
           learning_rate_decay=True,
           learning_rate_decay_factor=0.1,
-          learning_rate_decay_epoch=[30,60],
           weight_decay=1e-4,
           top_acc=1,
           data_parallel=True
