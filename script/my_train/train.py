@@ -441,6 +441,8 @@ if __name__ == "__main__":
     ))
 
     model = models.__dict__[arch](1000, expanded_inchannel, multiplier, pruned_cfg)
+    checkpoint=torch.load('/home/victorfang/pruning-from-scratch/data/model_saved/imagenet-resnet50-sparsity-0.50/channel-80-pruned-0.70/checkpoint/flop=1262676704,accuracy=0.69436.tar')
+    model.load_state_dict(checkpoint['state_dict'])
     # model=nn.DataParallel(model)
     model.cuda()
     train(net=model,
