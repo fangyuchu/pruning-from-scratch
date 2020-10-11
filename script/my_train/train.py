@@ -420,7 +420,19 @@ def train(
     writer.close()
     return not success
 
+class CrossEntropyLabelSmooth(nn.Module):
+    def __init__(self, num_classes, epsilon):
+        super(CrossEntropyLabelSmooth, self).__init__()
+        self.num_classes = num_classes
+        self.epsilon = epsilon
+        self.logsoftmax = nn.LogSoftmax(dim=1)
 
+    def forward(self, inputs, targets):
+        log_probs = self.logsoftmax(inputs)
+        targets = torch.zeros_like(log_probs).scatter_(1, targets.unsqueeze(1), 1)
+        targets = (1 - self.epsilon) * targets + self.epsilon / self.num_classes
+        loss = (-targets * log_probs).mean(0).sum()
+        return loss
 
 
 
@@ -449,19 +461,20 @@ if __name__ == "__main__":
           net_name=arch,
           exp_name='imagenet-%s-sparsity-%.2f/channel-%d-pruned-%.2f_train' % (arch, sparsity_level,expanded_inchannel, pruned_ratio),
           # learning_rate=0.1,
-          # learning_rate_decay_epoch=[30, 60],
-          # num_epochs=90,
+          # learning_rate_decay_epoch=[30, 60,90],
+          # num_epochs=100,
 
           learning_rate=0.001,
           learning_rate_decay_epoch=[70],
           num_epochs=30,
 
+          criterion=CrossEntropyLabelSmooth(num_classes=1000, epsilon=0.1).cuda(),
           batch_size=256,
           evaluate_step=6000,
           resume=True,
           test_net=True,
           momentum=0.9,
-          num_workers=8,
+          num_workers=4,
           learning_rate_decay=True,
           learning_rate_decay_factor=0.1,
           weight_decay=1e-4,
