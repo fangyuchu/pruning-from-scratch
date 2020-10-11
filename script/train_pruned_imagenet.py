@@ -13,7 +13,7 @@ import math
 from apex.parallel import DistributedDataParallel as DDP
 import warnings
 warnings.filterwarnings("ignore")
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 def print(msg):
     if args.local_rank == 0:
         misc.logger.info(msg)
@@ -32,7 +32,7 @@ parser.add_argument('-b', '--batch_size', default=512, type=int,
                     metavar='N', help='mini-batch size per process (default: 256)')
 parser.add_argument("--local_rank", default=0, type=int)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
-parser.add_argument('--pruned_ratio', '-p', default=0.7, type=float)
+parser.add_argument('--pruned_ratio', '-p', default=0.8, type=float)
 parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
 parser.add_argument('--multiplier', '-m', default=1.0, type=float)
 parser.add_argument('--budget_train', action='store_true')
@@ -55,7 +55,7 @@ if args.label_smooth:
     args.logdir += '-smooth'
 
 torch.backends.cudnn.benchmark = True
-args.distributed = False
+args.distributed = True
 if 'WORLD_SIZE' in os.environ:
     args.distributed = int(os.environ['WORLD_SIZE']) > 1
 
@@ -78,7 +78,6 @@ pruned_cfg = misc.load_pickle('logs/imagenet-%s/channel-%d-sparsity-%.2f/pruned_
 ))
 
 model = models.__dict__[args.arch](1000, args.expanded_inchannel, args.multiplier, pruned_cfg)
-torch.save({'net':model,'state_dict':model.state_dict()},'/home/victorfang/pfs_resnet50_80.tar')
 model = model.cuda()
 model = DDP(model, delay_allreduce=True)
 # define loss function (criterion) and optimizer
@@ -112,8 +111,7 @@ def get_lr_scheduler(optimizer):
 
     if args.lr_scheduler == 'multistep':
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            # optimizer, milestones=[int(0.3*args.epochs), int(0.6*args.epochs), int(0.9*args.epochs)],
-            optimizer, milestones=[30,60],#todo:here
+            optimizer, milestones=[int(0.3*args.epochs), int(0.6*args.epochs), int(0.9*args.epochs)],
             gamma=0.1)
 
     elif args.lr_scheduler == 'cos':
