@@ -14,7 +14,7 @@ import misc
 print = misc.logger.info
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', default='0', type=str)
+parser.add_argument('--gpu', default='2', type=str)
 parser.add_argument('--dataset', default='cifar100', type=str)
 parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
@@ -53,12 +53,12 @@ transform_val = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='train', transform=transform_train)
-trainset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset_ram/cifar100', train=True, transform=transform_train)
+trainset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='train', transform=transform_train)
+trainset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset/cifar100', train=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.train_batch_size, shuffle=True, num_workers=2)
 
-valset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='val', transform=transform_val)
-valset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset_ram/cifar100', train=False, transform=transform_val)
+valset = datasets.CIFAR10(root='/home/victorfang/dataset/cifar10', type='val', transform=transform_val)
+valset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset/cifar100', train=False, transform=transform_val)
 valloader = torch.utils.data.DataLoader(valset, batch_size=100, shuffle=False, num_workers=2)
 
 print('==> Initializing model...')

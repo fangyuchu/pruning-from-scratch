@@ -453,31 +453,29 @@ if __name__ == "__main__":
     ))
 
     model = models.__dict__[arch](1000, expanded_inchannel, multiplier, pruned_cfg)
-    checkpoint=torch.load('/home/victorfang/pruning-from-scratch/data/model_saved/imagenet-resnet50-sparsity-0.50/channel-80-pruned-0.70/checkpoint/flop=1262676704,accuracy=0.69436.tar')
-    model.load_state_dict(checkpoint['state_dict'])
+    # checkpoint=torch.load('/home/victorfang/pruning-from-scratch/data/model_saved/imagenet-resnet50-sparsity-0.50/channel-80-pruned-0.70/checkpoint/flop=1262676704,accuracy=0.69436.tar')
+    # model.load_state_dict(checkpoint['state_dict'])
     # model=nn.DataParallel(model)
     model.cuda()
     train(net=model,
           net_name=arch,
-          exp_name='imagenet-%s-sparsity-%.2f/channel-%d-pruned-%.2f_train' % (arch, sparsity_level,expanded_inchannel, pruned_ratio),
-          # learning_rate=0.1,
-          # learning_rate_decay_epoch=[30, 60,90],
-          # num_epochs=100,
+          exp_name='imagenet-%s-sparsity-%.2f/channel-%d-pruned-%.2f_new' % (arch, sparsity_level,expanded_inchannel, pruned_ratio),
+          learning_rate=0.1,
+          learning_rate_decay_epoch=[2*i for i in [30, 60,90]],
+          num_epochs=2*100,
 
-          learning_rate=0.001,
-          learning_rate_decay_epoch=[70],
-          num_epochs=30,
+
 
           criterion=CrossEntropyLabelSmooth(num_classes=1000, epsilon=0.1).cuda(),
           batch_size=256,
           evaluate_step=6000,
           resume=True,
-          test_net=True,
+          test_net=False,
           momentum=0.9,
           num_workers=4,
           learning_rate_decay=True,
           learning_rate_decay_factor=0.1,
           weight_decay=1e-4,
           top_acc=1,
-          data_parallel=True
+          data_parallel=False
           )
