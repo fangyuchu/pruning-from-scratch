@@ -11,7 +11,7 @@ import misc
 print = misc.logger.info
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', default='7', type=str)
+parser.add_argument('--gpu', default='2', type=str)
 parser.add_argument('--dataset', default='cifar100', type=str)
 parser.add_argument('--arch', '-a', default='vgg16_bn', type=str)
 parser.add_argument('--lr', default=0.1, type=float)
@@ -23,7 +23,7 @@ parser.add_argument('--train_batch_size', default=128, type=int)
 parser.add_argument('--sparsity_level', '-s', default=0.5, type=float)
 parser.add_argument('--pruned_ratio', '-p', default=0.75, type=float)
 parser.add_argument('--expanded_inchannel', '-e', default=80, type=int)
-parser.add_argument('--seed', default=4699, type=int)
+parser.add_argument('--seed', default=3706, type=int)
 parser.add_argument('--budget_train', action='store_true')
 
 args = parser.parse_args()
@@ -35,7 +35,7 @@ args.epochs=1*args.epochs
 args.num_classes = 100
 
 args.device = 'cuda'
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 args.logdir = 'seed-%d/%s-%s/channel-%d-pruned-%.2f' % (
     args.seed, args.dataset, args.arch, args.expanded_inchannel, args.pruned_ratio
@@ -60,27 +60,13 @@ transform_val = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='train', transform=transform_train)
-trainset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset_ram/cifar100', train=True, transform=transform_train)
+# trainset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='train', transform=transform_train)
+trainset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset/cifar100', train=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.train_batch_size, shuffle=True, num_workers=2)
 
-testset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='test', transform=transform_val)
-testset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset_ram/cifar100', train=False, transform=transform_val)
+# testset = datasets.CIFAR10(root='/home/victorfang/dataset_ram/cifar10', type='test', transform=transform_val)
+testset = torchvision.datasets.CIFAR100(root='/home/victorfang/dataset/cifar100', train=False, transform=transform_val)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
-
-print('==> Initializing model...')
-pruned_cfg = misc.load_pickle('logs/seed-%d/%s-%s/channel-%d-sparsity-%.2f/pruned_cfg-%.2f.pkl' % (
-    args.seed, args.dataset, args.arch, args.expanded_inchannel, args.sparsity_level, args.pruned_ratio
-))
-
-model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
-
-model = model.to(args.device)
-
-optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.mm, weight_decay=args.wd)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=[int(args.epochs * 0.5), int(args.epochs * 0.75)], gamma=0.1
-)
 
 
 def train(epoch):
@@ -102,6 +88,7 @@ def train(epoch):
                 epoch, i, len(trainloader), loss.item(), acc.item()
             ))
 
+
 def evaluate(loader):
     model.eval()
     test_loss = 0
@@ -121,12 +108,33 @@ def evaluate(loader):
     ))
     return acc
 
-for epoch in range(args.epochs):
-    scheduler.step()
-    train(epoch)
-    evaluate(testloader)
 
-torch.save(model.state_dict(), os.path.join(args.logdir, 'best_checkpoint.pth'))
-test_acc = evaluate(testloader)
-print('Final saved model test accuracy = %.4f' % test_acc)
+for prune_ratio in [0.75, 0.8, 0.83, 0.85, 0.87, 0.9, 0.93, 0.95, 0.98]:
+    print('pruning ratio:%.2f' % prune_ratio)
+    print('==> Initializing model...')
+    pruned_cfg = misc.load_pickle('logs/seed-%d/%s-%s/channel-%d-sparsity-%.2f/pruned_cfg-%.2f.pkl' % (
+        args.seed, args.dataset, args.arch, args.expanded_inchannel, args.sparsity_level, prune_ratio
+    ))
+
+    model = models.__dict__[args.arch](args.num_classes, args.expanded_inchannel, pruned_cfg)
+
+    model = model.to(args.device)
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.mm, weight_decay=args.wd)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[int(args.epochs * 0.5), int(args.epochs * 0.75)], gamma=0.1
+    )
+
+
+
+
+    for epoch in range(args.epochs):
+        scheduler.step()
+        train(epoch)
+        evaluate(testloader)
+
+    test_acc = evaluate(testloader)
+    print('Final saved model test accuracy = %.4f' % test_acc)
+    torch.save(model.state_dict(), os.path.join(args.logdir, str(test_acc)+'best_checkpoint.pth'))
+
 
